@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
-import psycopg2
+import pg8000
 import os
 
 app = Flask(__name__)
 
 def get_db():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
+    return pg8000.connect(os.environ["DATABASE_URL"])
 
 @app.route("/")
 def home():
