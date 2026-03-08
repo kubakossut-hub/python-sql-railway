@@ -2,11 +2,11 @@
 # Uruchamiany przez start.sh po podstawieniu zmiennych przez envsubst
 
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
 
     # -----------------------------------------------------------------------
-    # Strony HTML – HTTP Basic Auth przez nginx
+    # Strony HTML - HTTP Basic Auth przez nginx
     # -----------------------------------------------------------------------
     location / {
         auth_basic           "JARVIS";
@@ -18,13 +18,13 @@ server {
     }
 
     # -----------------------------------------------------------------------
-    # API proxy – nginx dodaje Bearer token, przeglądarka go nigdy nie widzi
+    # API proxy - nginx dodaje Bearer token, przegladarka go nigdy nie widzi
     # -----------------------------------------------------------------------
     location /api/ {
         auth_basic           "JARVIS";
         auth_basic_user_file /etc/nginx/.htpasswd;
 
-        # Usuń prefiks /api/ przed przekazaniem do FastAPI
+        # Usun prefiks /api/ przed przekazaniem do FastAPI
         rewrite ^/api/(.*) /$1 break;
 
         proxy_pass         http://127.0.0.1:8000;
@@ -33,12 +33,12 @@ server {
         proxy_set_header   X-Real-IP      $remote_addr;
         proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
 
-        # Timeouty (transcript może trwać do 65s)
+        # Timeouty (transcript moze trwac do 65s)
         proxy_read_timeout    90s;
         proxy_connect_timeout 10s;
         proxy_send_timeout    30s;
 
-        # Wyłącz buforowanie odpowiedzi (na bieżąco do przeglądarki)
+        # Wylacz buforowanie odpowiedzi
         proxy_buffering off;
     }
 
