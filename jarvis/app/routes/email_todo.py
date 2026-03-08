@@ -8,16 +8,16 @@ wstawia do tabela_todo. Błędy per-email nie przerywają pętli.
 
 import json
 import logging
-import re
 import uuid
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.auth import require_bearer
 from app.config import settings
 from app.db import get_db
-from app.models import EmailArrayInput, EmailInput
+from app.models import EmailArrayInput
+from app.utils import clean_body
 
 router = APIRouter(dependencies=[Depends(require_bearer)])
 logger = logging.getLogger(__name__)
@@ -34,33 +34,6 @@ Dla każdego zadania zwróć:
 
 Zwróć TYLKO poprawny JSON array. Bez żadnego tekstu przed ani po.
 Jeśli nie ma TODO, zwróć pustą tablicę: []"""
-
-# ---------------------------------------------------------------------------
-# Logika czyszczenia maila (identyczna z python 7, użyta bezpośrednio)
-# ---------------------------------------------------------------------------
-_QUOTED_PATTERNS = [
-    re.compile(r"On .+? wrote:.*",                       re.DOTALL),
-    re.compile(r"^>.*$",                                  re.MULTILINE),
-    re.compile(r"-{5,}Original Message-{5,}.*",          re.DOTALL | re.IGNORECASE),
-    re.compile(r"_{5,}.*",                                re.DOTALL),
-]
-_FOOTER_PATTERNS = [
-    re.compile(r"Sent from (my|the) .+",                  re.IGNORECASE),
-    re.compile(
-        r"(Best regards|Kind regards|Pozdrawiam|Z poważaniem|Dziękuję|Thanks?)[,.\s].*",
-        re.DOTALL | re.IGNORECASE,
-    ),
-    re.compile(r"\n--\s*\n.*",                            re.DOTALL),
-]
-
-
-def _clean_body(body: str) -> str:
-    for pat in _QUOTED_PATTERNS:
-        body = pat.sub("", body)
-    for pat in _FOOTER_PATTERNS:
-        body = pat.sub("", body)
-    body = re.sub(r"\n{3,}", "\n\n", body).strip()
-    return body
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +56,7 @@ def todo_from_email(data: EmailArrayInput, conn=Depends(get_db)):
     for email in data.emails:
         try:
             # a. Oczyść mail
-            clean_body = _clean_body(email.body or "")
+            cleaned = clean_body(email.body or "")
 
             # b. Claude Sonnet
             try:
@@ -97,7 +70,7 @@ def todo_from_email(data: EmailArrayInput, conn=Depends(get_db)):
                             f"Od: {email.from_address}\n"
                             f"Temat: {email.subject}\n"
                             f"Data: {email.date}\n\n"
-                            f"Treść:\n{clean_body[:4000]}"
+                            f"Treść:\n{cleaned[:4000]}"
                         ),
                     }],
                 )
