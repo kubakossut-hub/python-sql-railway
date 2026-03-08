@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS – Transkrypcja</title>
+  <link rel="stylesheet" href="/static/jarvis.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f0f2f5; min-height: 100vh; }
+    nav { background: #1a1a2e; color: #fff; padding: 14px 24px;
+          display: flex; align-items: center; gap: 20px; }
+    nav a { color: #a0aec0; text-decoration: none; font-size: 14px; }
+    nav a:hover { color: #fff; }
+    nav .logo { font-weight: 700; font-size: 18px; color: #fff; margin-right: auto; }
+    .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 22px; font-weight: 600; color: #1a1a2e; margin-bottom: 24px; }
+    .card { background: #fff; border-radius: 12px; padding: 28px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    label { display: block; font-size: 13px; font-weight: 600;
+            color: #4a5568; margin-bottom: 6px; }
+    input[type=text], input[type=date], textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid #d1d5db;
+      border-radius: 8px; font-size: 14px; color: #1a1a2e;
+      transition: border-color .2s; }
+    input:focus, textarea:focus {
+      outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    textarea { resize: vertical; min-height: 280px; font-family: inherit; line-height: 1.6; }
+    .form-row { margin-bottom: 20px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .hint { font-size: 12px; color: #718096; margin-top: 4px; }
+    button[type=submit] {
+      background: #4f46e5; color: #fff; border: none; border-radius: 8px;
+      padding: 12px 28px; font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: background .2s; width: 100%; }
+    button[type=submit]:hover  { background: #4338ca; }
+    button[type=submit]:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    /* Komunikaty */
+    #msg { display: none; border-radius: 8px; padding: 14px 18px;
+           font-size: 14px; margin-top: 20px; }
+    #msg.success { display: block; background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+    #msg.error   { display: block; background: #fff1f2; border: 1px solid #fca5a5; color: #b91c1c; }
+    #msg.info    { display: block; background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+    .spinner { display: inline-block; width: 16px; height: 16px;
+               border: 2px solid #fff; border-top-color: transparent;
+               border-radius: 50%; animation: spin .6s linear infinite;
+               vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">🤖 JARVIS</span>
+  <a href="/main.html">Dashboard</a>
+  <a href="/inbox.html">Inbox TODO</a>
+  <a href="/transcript.html" style="color:#fff">Transkrypcja</a>
+</nav>
+
+<div class="container">
+  <h1>Dodaj transkrypcję spotkania</h1>
+
+  <div class="card">
+    <form id="form" novalidate>
+
+      <div class="form-row">
+        <label for="title">Nazwa spotkania *</label>
+        <input type="text" id="title" name="title" placeholder="np. Weekly team sync" required>
+      </div>
+
+      <div class="form-row-2">
+        <div>
+          <label for="attendees">Uczestnicy</label>
+          <input type="text" id="attendees" name="attendees" placeholder="Anna, Piotr, marek@firma.pl">
+          <p class="hint">Oddziel przecinkami (opcjonalne)</p>
+        </div>
+        <div>
+          <label for="date">Data spotkania</label>
+          <input type="date" id="date" name="date">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="transcript">Transkrypcja *</label>
+        <textarea id="transcript" name="transcript"
+          placeholder="Wklej tutaj pełną transkrypcję spotkania..." required></textarea>
+      </div>
+
+      <button type="submit" id="btn">Wyślij do analizy</button>
+
+      <div id="msg"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const form     = document.getElementById('form');
+  const btn      = document.getElementById('btn');
+  const msgEl    = document.getElementById('msg');
+
+  function showMsg(type, text) {
+    msgEl.className = type;
+    msgEl.innerHTML = text;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const title      = document.getElementById('title').value.trim();
+    const transcript = document.getElementById('transcript').value.trim();
+    const attendees  = document.getElementById('attendees').value
+                        .split(',').map(s => s.trim()).filter(Boolean);
+    const date       = document.getElementById('date').value || null;
+
+    // Walidacja front-end
+    if (!title) {
+      showMsg('error', '❌ Podaj nazwę spotkania.');
+      document.getElementById('title').focus();
+      return;
+    }
+    if (!transcript) {
+      showMsg('error', '❌ Wklej transkrypcję spotkania.');
+      document.getElementById('transcript').focus();
+      return;
+    }
+
+    // Unikalne meeting_id na podstawie tytułu + timestamp
+    const meeting_id = `manual-${Date.now()}`;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Przetwarzanie przez Claude...';
+    showMsg('info', '⏳ Analizuję transkrypcję (może potrwać do 60 sekund)...');
+
+    try {
+      const resp = await fetch('/api/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meeting_id, title, attendees, transcript, date }),
+        signal: AbortSignal.timeout(65_000),
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        showMsg('success',
+          `✅ TODO wysłane do weryfikacji na Telegram. Znaleziono: <strong>${data.todo_count}</strong> zadań.`
+        );
+        form.reset();
+      } else {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        showMsg('error', `❌ Błąd serwera (${resp.status}): ${JSON.stringify(err.detail)}`);
+      }
+
+    } catch (err) {
+      if (err.name === 'TimeoutError') {
+        showMsg('info', '⏳ Przetwarzanie trwa dłużej niż zwykle. Sprawdź Telegram za chwilę.');
+      } else {
+        showMsg('error', `❌ Błąd połączenia: ${err.message}`);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Wyślij do analizy';
+    }
+  });
+</script>
+
+</body>
+</html>

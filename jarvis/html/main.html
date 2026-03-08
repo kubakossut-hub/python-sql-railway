@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS – Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f0f2f5; min-height: 100vh; }
+    nav { background: #1a1a2e; color: #fff; padding: 14px 24px;
+          display: flex; align-items: center; gap: 20px; }
+    nav a { color: #a0aec0; text-decoration: none; font-size: 14px; }
+    nav a:hover { color: #fff; }
+    nav .logo { font-weight: 700; font-size: 18px; color: #fff; margin-right: auto; }
+    .container { max-width: 960px; margin: 40px auto; padding: 0 20px; }
+    .greeting { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+    .subheading { font-size: 14px; color: #718096; margin-bottom: 36px; }
+
+    /* Stats row */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 36px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 22px 24px;
+                 box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .stat-card .label { font-size: 12px; font-weight: 600; color: #718096;
+                        text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .value { font-size: 32px; font-weight: 700; color: #1a1a2e; margin: 6px 0; }
+    .stat-card .sub   { font-size: 12px; color: #718096; }
+
+    /* Quick links */
+    .section-title { font-size: 14px; font-weight: 700; color: #4a5568;
+                     text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+    .modules { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .module-card { background: #fff; border-radius: 12px; padding: 22px 24px;
+                   box-shadow: 0 1px 4px rgba(0,0,0,.08);
+                   text-decoration: none; color: inherit;
+                   display: flex; align-items: flex-start; gap: 16px;
+                   transition: box-shadow .2s, transform .1s; }
+    .module-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-1px); }
+    .module-icon { font-size: 28px; flex-shrink: 0; }
+    .module-title { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+    .module-desc  { font-size: 13px; color: #718096; line-height: 1.5; }
+    .module-arrow { margin-left: auto; color: #cbd5e0; font-size: 18px; align-self: center; }
+
+    /* Status dot */
+    .status-dot { display: inline-block; width: 8px; height: 8px;
+                  border-radius: 50%; margin-right: 6px; }
+    .dot-green  { background: #22c55e; }
+    .dot-yellow { background: #f59e0b; }
+
+    .spinner { display: inline-block; width: 14px; height: 14px;
+               border: 2px solid #d1d5db; border-top-color: #4f46e5;
+               border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">🤖 JARVIS</span>
+  <a href="/main.html" style="color:#fff">Dashboard</a>
+  <a href="/inbox.html">Inbox TODO</a>
+  <a href="/transcript.html">Transkrypcja</a>
+</nav>
+
+<div class="container">
+  <p class="greeting">Dzień dobry 👋</p>
+  <p class="subheading">Panel sterowania JARVIS – Twojego asystenta do zarządzania zadaniami.</p>
+
+  <!-- Statystyki -->
+  <div class="stats">
+    <div class="stat-card">
+      <p class="label">TODO do przejrzenia</p>
+      <p class="value" id="stat-pending"><span class="spinner"></span></p>
+      <p class="sub">reviewed = FALSE</p>
+    </div>
+    <div class="stat-card">
+      <p class="label">TODO oczekujące na Motion</p>
+      <p class="value" id="stat-motion"><span class="spinner"></span></p>
+      <p class="sub">reviewed = TRUE, added_to_motion = FALSE</p>
+    </div>
+    <div class="stat-card">
+      <p class="label">Status API</p>
+      <p class="value" id="stat-api" style="font-size:18px;margin-top:14px">
+        <span class="spinner"></span>
+      </p>
+      <p class="sub" id="stat-api-sub">sprawdzam...</p>
+    </div>
+  </div>
+
+  <!-- Moduły -->
+  <p class="section-title">Moduły</p>
+  <div class="modules">
+
+    <a class="module-card" href="/inbox.html">
+      <span class="module-icon">📥</span>
+      <div>
+        <p class="module-title">Inbox TODO</p>
+        <p class="module-desc">Przejrzyj i zatwierdź TODO wygenerowane przez Make/Claude.
+          Edytuj pola przed wysłaniem do Motion.</p>
+      </div>
+      <span class="module-arrow">›</span>
+    </a>
+
+    <a class="module-card" href="/transcript.html">
+      <span class="module-icon">📋</span>
+      <div>
+        <p class="module-title">Transkrypcja</p>
+        <p class="module-desc">Wklej transkrypcję spotkania ręcznie.
+          Claude wyciągnie TODO i wyśle je do weryfikacji na Telegram.</p>
+      </div>
+      <span class="module-arrow">›</span>
+    </a>
+
+    <div class="module-card" style="cursor:default;opacity:.6">
+      <span class="module-icon">📧</span>
+      <div>
+        <p class="module-title">Email → TODO <em style="font-size:11px">(Make 4)</em></p>
+        <p class="module-desc">Automatyczne wyciąganie TODO z maili z labelem 'TODO'.
+          Uruchamiany co 4h przez Make — brak ręcznego wejścia.</p>
+      </div>
+    </div>
+
+    <div class="module-card" style="cursor:default;opacity:.6">
+      <span class="module-icon">✍️</span>
+      <div>
+        <p class="module-title">Podpisy <em style="font-size:11px">(Make 5–6)</em></p>
+        <p class="module-desc">Monitoring maili z prośbami o podpis.
+          Powiadomienia i TODO tworzone automatycznie przez Make.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Załaduj statystyki
+  async function loadStats() {
+    try {
+      // Pending TODO
+      const r1 = await fetch('/api/todo?reviewed=false');
+      const pending = await r1.json();
+      document.getElementById('stat-pending').textContent = pending.length;
+
+      // TODO w kolejce do Motion
+      const r2 = await fetch('/api/todo?reviewed=true&added_to_motion=false');
+      const motion = await r2.json();
+      document.getElementById('stat-motion').textContent = motion.length;
+
+      // API health
+      const r3 = await fetch('/api/health');
+      const health = await r3.json();
+      document.getElementById('stat-api').innerHTML =
+        `<span class="status-dot dot-green"></span>${health.status === 'ok' ? 'OK' : health.status}`;
+      document.getElementById('stat-api-sub').textContent = 'API działa poprawnie';
+
+    } catch (err) {
+      document.getElementById('stat-api').innerHTML =
+        `<span class="status-dot dot-yellow"></span>Błąd`;
+      document.getElementById('stat-api-sub').textContent = err.message;
+    }
+  }
+
+  loadStats();
+</script>
+
+</body>
+</html>

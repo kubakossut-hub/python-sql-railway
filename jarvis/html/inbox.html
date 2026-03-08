@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS – Inbox TODO</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f0f2f5; min-height: 100vh; }
+    nav { background: #1a1a2e; color: #fff; padding: 14px 24px;
+          display: flex; align-items: center; gap: 20px; }
+    nav a { color: #a0aec0; text-decoration: none; font-size: 14px; }
+    nav a:hover { color: #fff; }
+    nav .logo { font-weight: 700; font-size: 18px; color: #fff; margin-right: auto; }
+    .container { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
+    .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    h1 { font-size: 20px; font-weight: 600; color: #1a1a2e; }
+    .badge { background: #e0e7ff; color: #4338ca; border-radius: 20px;
+             padding: 3px 10px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+    .btn-accept { background: #16a34a; color: #fff; border: none; border-radius: 8px;
+                  padding: 10px 22px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-accept:hover    { background: #15803d; }
+    .btn-accept:disabled { background: #86efac; cursor: not-allowed; }
+    .btn-reload { background: #fff; color: #374151; border: 1px solid #d1d5db;
+                  border-radius: 8px; padding: 10px 18px; font-size: 14px;
+                  cursor: pointer; margin-left: 10px; }
+    .btn-reload:hover { background: #f9fafb; }
+
+    /* Tabela */
+    .table-wrap { background: #fff; border-radius: 12px;
+                  box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: #1a1a2e; color: #fff; padding: 12px 14px;
+               text-align: left; white-space: nowrap; font-weight: 600; font-size: 12px; }
+    thead th:first-child { border-radius: 12px 0 0 0; }
+    thead th:last-child  { border-radius: 0 12px 0 0; }
+    tbody tr { border-bottom: 1px solid #f0f2f5; transition: background .1s; }
+    tbody tr:hover { background: #fafafa; }
+    tbody td { padding: 10px 14px; vertical-align: top; }
+
+    /* Edytowalne pola */
+    .editable { width: 100%; border: 1px solid transparent; border-radius: 6px;
+                padding: 5px 8px; font-size: 13px; background: transparent;
+                color: #1a1a2e; font-family: inherit; resize: none; }
+    .editable:focus { outline: none; border-color: #4f46e5;
+                      background: #fff; box-shadow: 0 0 0 2px rgba(79,70,229,.1); }
+    input.editable  { height: 32px; }
+    textarea.editable { min-height: 56px; line-height: 1.5; }
+
+    /* Source badge */
+    .src { display: inline-block; border-radius: 4px; padding: 2px 8px;
+           font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .src-transcript { background: #dbeafe; color: #1d4ed8; }
+    .src-email      { background: #fef3c7; color: #92400e; }
+    .src-manual     { background: #f3e8ff; color: #6b21a8; }
+
+    /* Checkbox */
+    input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #4f46e5; }
+
+    /* Stany */
+    #toast { position: fixed; bottom: 24px; right: 24px; border-radius: 10px;
+             padding: 14px 20px; font-size: 14px; font-weight: 500;
+             box-shadow: 0 4px 20px rgba(0,0,0,.15); display: none; z-index: 99; }
+    #toast.success { display: block; background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+    #toast.error   { display: block; background: #fff1f2; border: 1px solid #fca5a5; color: #b91c1c; }
+    #toast.info    { display: block; background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #718096; }
+    .empty-state p { font-size: 15px; margin-top: 8px; }
+    .spinner { display: inline-block; width: 18px; height: 18px;
+               border: 2px solid currentColor; border-top-color: transparent;
+               border-radius: 50%; animation: spin .6s linear infinite;
+               vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .select-all-row th { background: #f8fafc; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">🤖 JARVIS</span>
+  <a href="/main.html">Dashboard</a>
+  <a href="/inbox.html" style="color:#fff">Inbox TODO</a>
+  <a href="/transcript.html">Transkrypcja</a>
+</nav>
+
+<div class="container">
+  <div class="top-bar">
+    <div>
+      <h1>Inbox TODO <span class="badge" id="count">0</span></h1>
+      <p style="font-size:13px;color:#718096;margin-top:4px">
+        Przejrzyj i zaakceptuj zadania przed wysłaniem do Motion
+      </p>
+    </div>
+    <div>
+      <button class="btn-accept" id="btnAccept" disabled onclick="acceptSelected()">
+        ✅ Akceptuj zaznaczone
+      </button>
+      <button class="btn-reload" onclick="loadTodos()">🔄 Odśwież</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="table">
+      <thead>
+        <tr>
+          <th style="width:40px"><input type="checkbox" id="checkAll" onchange="toggleAll(this)"></th>
+          <th style="min-width:200px">Tytuł</th>
+          <th style="min-width:260px">Opis</th>
+          <th style="width:160px">Termin (duedate)</th>
+          <th style="width:90px">Czas (min)</th>
+          <th style="width:130px">Assignee</th>
+          <th style="width:100px">Źródło</th>
+          <th style="min-width:140px">Ze spotkania</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="8" class="empty-state">
+          <span class="spinner"></span> Ładowanie...
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let todos = [];        // pełne dane z API
+  let pendingSave = {};  // {id: timer} – debounce autosave
+
+  // ---------------------------------------------------------------------------
+  // Ładowanie TODO
+  // ---------------------------------------------------------------------------
+  async function loadTodos() {
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">
+      <span class="spinner"></span> Ładowanie...</td></tr>`;
+    document.getElementById('checkAll').checked = false;
+    document.getElementById('btnAccept').disabled = true;
+
+    try {
+      const resp = await fetch('/api/todo?reviewed=false');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      todos = await resp.json();
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color:#b91c1c">
+        ❌ Błąd ładowania danych: ${err.message}</td></tr>`;
+      return;
+    }
+
+    document.getElementById('count').textContent = todos.length;
+
+    if (todos.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">
+        <p>✅ Brak nowych TODO do przejrzenia.</p></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = '';
+    todos.forEach(t => tbody.appendChild(buildRow(t)));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Buduj wiersz tabeli
+  // ---------------------------------------------------------------------------
+  function buildRow(t) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = t.id;
+
+    const srcClass = `src src-${t.source || 'manual'}`;
+    const srcLabel = { transcript: '📋 transcript', email: '📧 email', manual: '✏️ manual' }[t.source] || t.source;
+
+    tr.innerHTML = `
+      <td><input type="checkbox" class="row-check" data-id="${t.id}" onchange="onCheck()"></td>
+      <td><textarea class="editable" rows="2" data-field="title"
+            oninput="scheduleSave('${t.id}', this, 'title')">${esc(t.title)}</textarea></td>
+      <td><textarea class="editable" rows="3" data-field="description"
+            oninput="scheduleSave('${t.id}', this, 'description')">${esc(t.description || '')}</textarea></td>
+      <td><input type="datetime-local" class="editable" data-field="duedate"
+            value="${(t.duedate || '').slice(0,16)}"
+            onchange="scheduleSave('${t.id}', this, 'duedate')"></td>
+      <td><input type="number" class="editable" min="5" step="5" data-field="duration"
+            value="${t.duration || ''}" placeholder="—"
+            onchange="scheduleSave('${t.id}', this, 'duration')"></td>
+      <td><input type="text" class="editable" data-field="assignee_id"
+            value="${esc(t.assignee_id || '')}" placeholder="—"
+            oninput="scheduleSave('${t.id}', this, 'assignee_id')"></td>
+      <td><span class="${srcClass}">${srcLabel}</span></td>
+      <td style="font-size:12px;color:#718096">${esc(t.meeting_title || '—')}</td>
+    `;
+    return tr;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Autosave z debounce 1s
+  // ---------------------------------------------------------------------------
+  function scheduleSave(id, input, field) {
+    clearTimeout(pendingSave[id]);
+    pendingSave[id] = setTimeout(() => savePatch(id, field, input.value), 1000);
+  }
+
+  async function savePatch(id, field, value) {
+    const body = { [field]: value === '' ? null : (field === 'duration' ? Number(value) || null : value) };
+    try {
+      const resp = await fetch(`/api/todo/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    } catch (err) {
+      showToast('error', `❌ Błąd zapisu: ${err.message}`);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Checkboxy
+  // ---------------------------------------------------------------------------
+  function toggleAll(cb) {
+    document.querySelectorAll('.row-check').forEach(c => c.checked = cb.checked);
+    onCheck();
+  }
+
+  function onCheck() {
+    const checked = document.querySelectorAll('.row-check:checked').length;
+    document.getElementById('btnAccept').disabled = checked === 0;
+    const all = document.querySelectorAll('.row-check').length;
+    document.getElementById('checkAll').indeterminate = checked > 0 && checked < all;
+    document.getElementById('checkAll').checked = checked === all && all > 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Akceptuj zaznaczone
+  // ---------------------------------------------------------------------------
+  async function acceptSelected() {
+    const ids = [...document.querySelectorAll('.row-check:checked')].map(c => c.dataset.id);
+    if (!ids.length) return;
+
+    const btn = document.getElementById('btnAccept');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Wysyłanie do Motion...';
+
+    try {
+      const resp = await fetch('/api/inbox/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ todo_ids: ids }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        throw new Error(JSON.stringify(err.detail));
+      }
+      const data = await resp.json();
+      showToast('success', `✅ Zaakceptowano ${data.updated} TODO. Dodawanie do Motion w toku.`);
+      // Usuń zaakceptowane wiersze z tabeli
+      ids.forEach(id => document.querySelector(`tr[data-id="${id}"]`)?.remove());
+      const remaining = document.querySelectorAll('.row-check').length;
+      document.getElementById('count').textContent = remaining;
+      document.getElementById('checkAll').checked = false;
+      onCheck();
+    } catch (err) {
+      showToast('error', `❌ Błąd: ${err.message}`);
+    } finally {
+      btn.innerHTML = '✅ Akceptuj zaznaczone';
+      onCheck();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  let toastTimer;
+  function showToast(type, msg) {
+    const t = document.getElementById('toast');
+    t.className = type;
+    t.textContent = msg;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = ''; t.textContent = ''; }, 5000);
+  }
+
+  // Załaduj przy starcie
+  loadTodos();
+</script>
+
+</body>
+</html>
