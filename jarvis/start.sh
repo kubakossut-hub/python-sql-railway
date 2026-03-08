@@ -15,7 +15,7 @@ echo "=== JARVIS start.sh ==="
 # 2. Wygeneruj plik .htpasswd dla HTTP Basic Auth
 echo "Generowanie .htpasswd..."
 echo "${NGINX_USER}:$(openssl passwd -apr1 "${NGINX_PASSWORD}")" > /etc/nginx/.htpasswd
-chmod 640 /etc/nginx/.htpasswd
+chmod 644 /etc/nginx/.htpasswd
 
 # 3. Wygeneruj nginx config z podstawionymi zmiennymi
 echo "Generowanie nginx config..."
